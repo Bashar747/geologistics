@@ -9,40 +9,41 @@ use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Resources\DriverVehicleAssignmentResource;
+use App\Http\Resources\UserResource;
 
 class DriverController extends Controller
 {
     // عرض كل السواق (أدمن/موزّع فقط) مع مركبتهم الحالية إذا وجدت
-    public function index()
-    {
-        $drivers = User::where('role', 'driver')
-            ->with(['driverProfile', 'vehicleAssignments' => function ($q) {
-                $q->where('is_active', true)->with('vehicle:id,plate_number,status');
-            }])
-            ->paginate(15);
+  public function index()
+{
+    $drivers = User::where('role', 'driver')
+        ->with(['driverProfile', 'vehicleAssignments' => function ($q) {
+            $q->where('is_active', true)->with('vehicle');
+        }])
+        ->paginate(15);
 
-        return response()->json($drivers);
-    }
+    return UserResource::collection($drivers);
+}
 
     // عرض سائق واحد بالتفصيل
-    public function show(Request $request, User $driver)
-    {
-        if ($driver->role !== 'driver') {
-            return response()->json(['message' => 'User is not a driver'], 404);
-        }
-
-        // سائق يقدر يشوف بياناته هو بس، أدمن/موزّع يشوفوا أي سائق
-        $user = $request->user();
-        if ($user->role === 'driver' && $user->id !== $driver->id) {
-            return response()->json(['message' => 'You are not authorized to view this driver'], 403);
-        }
-
-        return response()->json(
-            $driver->load(['driverProfile', 'vehicleAssignments' => function ($q) {
-                $q->where('is_active', true)->with('vehicle');
-            }])
-        );
+   public function show(Request $request, User $driver)
+{
+    if ($driver->role !== 'driver') {
+        return response()->json(['message' => 'User is not a driver'], 404);
     }
+
+    $user = $request->user();
+    if ($user->role === 'driver' && $user->id !== $driver->id) {
+        return response()->json(['message' => 'You are not authorized to view this driver'], 403);
+    }
+
+    $driver->load(['driverProfile', 'vehicleAssignments' => function ($q) {
+        $q->where('is_active', true)->with('vehicle');
+    }]);
+
+    return new UserResource($driver);
+}
 
     // تخصيص سائق لمركبة (أدمن/موزّع فقط)
     public function assign(Request $request)
@@ -85,10 +86,10 @@ class DriverController extends Controller
             ]);
         });
 
-        return response()->json([
-            'message' => 'Driver assigned to vehicle successfully',
-            'assignment' => $assignment->load(['driver:id,name,phone', 'vehicle:id,plate_number']),
-        ], 201);
+       return response()->json([
+    'message' => 'Driver assigned to vehicle successfully',
+    'assignment' => new DriverVehicleAssignmentResource($assignment->load(['driver', 'vehicle'])),
+], 201);
     }
 
     // إلغاء تخصيص سائق حالي (أدمن/موزّع فقط)

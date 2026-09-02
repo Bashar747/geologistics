@@ -10,26 +10,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Events\VehicleLocationUpdated;
+use App\Http\Resources\VehicleResource;
 
 class VehicleController extends Controller
 {
    
-    public function index(Request $request)
-    {
-        $user = $request->user();
+  public function index(Request $request)
+{
+    $user = $request->user();
 
-        $query = Vehicle::with(['currentAssignment.driver:id,name,phone']);
+    $query = Vehicle::with(['currentAssignment.driver']);
 
-        if ($user->role === 'driver') {
-            $vehicleId = $user->vehicleAssignments()
-                ->where('is_active', true)
-                ->value('vehicle_id');
+    if ($user->role === 'driver') {
+        $vehicleId = $user->vehicleAssignments()
+            ->where('is_active', true)
+            ->value('vehicle_id');
 
-            $query->where('id', $vehicleId);
-        }
-
-        return response()->json($query->paginate(15));
+        $query->where('id', $vehicleId);
     }
+
+    return VehicleResource::collection($query->paginate(15));
+}
 
    
     public function store(Request $request)
@@ -62,40 +63,40 @@ class VehicleController extends Controller
 
   
     public function show(Request $request, Vehicle $vehicle)
-    {
-        $this->authorizeAccess($request, $vehicle);
+{
+    $this->authorizeAccess($request, $vehicle);
 
-        return response()->json(
-            $vehicle->load(['currentAssignment.driver:id,name,phone', 'shipments' => function ($q) {
-                $q->whereIn('status', ['assigned', 'picked_up'])->latest()->limit(5);
-            }])
-        );
-    }
+    $vehicle->load(['currentAssignment.driver', 'shipments' => function ($q) {
+        $q->whereIn('status', ['assigned', 'picked_up'])->latest()->limit(5);
+    }]);
+
+    return new VehicleResource($vehicle);
+}
 
 
-    public function update(Request $request, Vehicle $vehicle)
-    {
-        $validator = Validator::make($request->all(), [
-            'plate_number' => ['sometimes', 'string', 'max:50', 'unique:vehicles,plate_number,' . $vehicle->id],
-            'model' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'type' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'status' => ['sometimes', 'in:idle,in_transit,maintenance,offline'],
-        ]);
+   public function update(Request $request, Vehicle $vehicle)
+{
+    $validator = Validator::make($request->all(), [
+        'plate_number' => ['sometimes', 'string', 'max:50', 'unique:vehicles,plate_number,' . $vehicle->id],
+        'model' => ['sometimes', 'nullable', 'string', 'max:100'],
+        'type' => ['sometimes', 'nullable', 'string', 'max:100'],
+        'status' => ['sometimes', 'in:idle,in_transit,maintenance,offline'],
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Data verification error',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $vehicle->update($validator->validated());
-
+    if ($validator->fails()) {
         return response()->json([
-            'message' => 'Vehicle updated successfully',
-            'vehicle' => $vehicle->fresh(),
-        ]);
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
     }
+
+    $vehicle->update($validator->validated());
+
+    return response()->json([
+        'message' => 'Vehicle updated successfully',
+        'vehicle' => new VehicleResource($vehicle->fresh()),
+    ]);
+}
 
     public function destroy(Vehicle $vehicle)
     {

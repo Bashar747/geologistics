@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Services\AuditLogger;
 
 class AuthController extends Controller
 {
@@ -46,7 +47,7 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken($request->device_name ?? 'default-device')->plainTextToken;
-
+        AuditLogger::log('user.registered', 'User', $user->id, userId: $user->id);
         return response()->json([
             'message' => 'Account created successfully',
             'user' => $user,
@@ -79,7 +80,7 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken($request->device_name ?? 'default-device')->plainTextToken;
-
+         AuditLogger::log('user.login', 'User', $user->id, userId: $user->id);
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
@@ -91,7 +92,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-
+          AuditLogger::log('user.logout', 'User', $request->user()->id, userId: $request->user()->id);
         return response()->json([
             'message' => 'Logout successful',
         ]);

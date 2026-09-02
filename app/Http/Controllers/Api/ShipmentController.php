@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ShipmentResource;
 use App\Models\Shipment;
 use App\Models\ShipmentStatusHistory;
 use Clickbar\Magellan\Data\Geometries\Point;
@@ -17,7 +18,7 @@ class ShipmentController extends Controller
     {
         $user = $request->user();
 
-        $query = Shipment::with(['items', 'customer:id,name,phone']);
+        $query = Shipment::with(['items', 'customer']);
 
         if ($user->role === 'customer') {
             $query->where('customer_id', $user->id);
@@ -28,13 +29,11 @@ class ShipmentController extends Controller
 
             $query->where('vehicle_id', $vehicleId);
         }
-      
 
         $shipments = $query->latest()->paginate(15);
 
-        return response()->json($shipments);
+        return ShipmentResource::collection($shipments);
     }
-
 
     public function store(Request $request)
     {
@@ -53,7 +52,7 @@ class ShipmentController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Data verification error',
+                'message' => 'Validation error',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -75,35 +74,33 @@ class ShipmentController extends Controller
                 'shipment_id' => $shipment->id,
                 'status' => 'pending',
                 'changed_by' => $request->user()->id,
-                'note' => 'Vehicle location updated successfully',
+                'note' => 'Shipment created',
             ]);
 
             return $shipment;
         });
 
         return response()->json([
-            'message' => 'Vehicle location updated successfully',
-            'shipment' => $shipment->load('items'),
+            'message' => 'Shipment created successfully',
+            'shipment' => new ShipmentResource($shipment->load('items')),
         ], 201);
     }
-
 
     public function show(Request $request, Shipment $shipment)
     {
         $this->authorizeAccess($request, $shipment);
 
-        return response()->json(
-            $shipment->load(['items', 'statusHistory', 'customer:id,name,phone', 'vehicle', 'payment', 'rating'])
-        );
+        $shipment->load(['items', 'statusHistory.changedBy', 'customer', 'vehicle.currentAssignment.driver', 'payment', 'rating.ratedBy']);
+
+        return new ShipmentResource($shipment);
     }
 
-   
     public function update(Request $request, Shipment $shipment)
     {
         $user = $request->user();
 
         if (! in_array($user->role, ['driver', 'dispatcher', 'admin'], true)) {
-            return response()->json(['message' => 'You do not have permission to modify the shipment status.'], 403);
+            return response()->json(['message' => 'You are not authorized to update this shipment\'s status'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -113,7 +110,7 @@ class ShipmentController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => 'Data verification error',
+                'message' => 'Validation error',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -130,8 +127,8 @@ class ShipmentController extends Controller
         });
 
         return response()->json([
-            'message' => 'Vehicle location updated successfully',
-            'shipment' => $shipment->fresh(['items', 'statusHistory']),
+            'message' => 'Shipment status updated',
+            'shipment' => new ShipmentResource($shipment->fresh(['items', 'statusHistory'])),
         ]);
     }
 
@@ -140,25 +137,24 @@ class ShipmentController extends Controller
         $user = $request->user();
 
         if ($user->role === 'customer' && $shipment->customer_id !== $user->id) {
-            return response()->json(['message' => 'You do not have permission to delete this shipment.'], 403);
+            return response()->json(['message' => 'You are not authorized to delete this shipment'], 403);
         }
 
         if ($shipment->status !== 'pending') {
-            return response()->json(['message' => 'You can only delete pending shipments.'], 422);
+            return response()->json(['message' => 'Cannot delete a shipment that has already been assigned or progressed'], 422);
         }
 
         $shipment->delete();
 
-        return response()->json(['message' => 'Shipment deleted successfully.']);
+        return response()->json(['message' => 'Shipment deleted']);
     }
 
-   
     private function authorizeAccess(Request $request, Shipment $shipment): void
     {
         $user = $request->user();
 
         if ($user->role === 'customer' && $shipment->customer_id !== $user->id) {
-            abort(403, 'You do not have permission to view this shipment.');
+            abort(403, 'You are not authorized to access this shipment');
         }
 
         if ($user->role === 'driver') {
@@ -167,7 +163,7 @@ class ShipmentController extends Controller
                 ->value('vehicle_id');
 
             if ($shipment->vehicle_id !== $activeVehicleId) {
-                abort(403, 'You do not have permission to view this shipment.');
+                abort(403, 'You are not authorized to access this shipment');
             }
         }
     }

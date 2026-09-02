@@ -7,34 +7,35 @@ use App\Models\SentNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Resources\SentNotificationResource;
 
 class NotificationController extends Controller
 {
     // عرض إشعارات المستخدم الحالي بس (أدمن/موزّع يقدروا يشوفوا كل الإشعارات)
     public function index(Request $request)
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        $query = SentNotification::query();
+    $query = SentNotification::query();
 
-        if (! in_array($user->role, ['admin', 'dispatcher'], true)) {
-            $query->where('user_id', $user->id);
-        }
-
-        return response()->json($query->latest()->paginate(20));
+    if (! in_array($user->role, ['admin', 'dispatcher'], true)) {
+        $query->where('user_id', $user->id);
     }
+
+    return SentNotificationResource::collection($query->latest()->paginate(20));
+}
 
     // عرض إشعار واحد بالتفصيل
-    public function show(Request $request, SentNotification $notification)
-    {
-        $user = $request->user();
+   public function show(Request $request, SentNotification $notification)
+{
+    $user = $request->user();
 
-        if (! in_array($user->role, ['admin', 'dispatcher'], true) && $notification->user_id !== $user->id) {
-            return response()->json(['message' => 'You are not authorized to view this notification'], 403);
-        }
-
-        return response()->json($notification);
+    if (! in_array($user->role, ['admin', 'dispatcher'], true) && $notification->user_id !== $user->id) {
+        return response()->json(['message' => 'You are not authorized to view this notification'], 403);
     }
+
+    return new SentNotificationResource($notification);
+}
 
     // إرسال إشعار لمستخدم معين (أدمن/موزّع فقط)
     public function store(Request $request)
