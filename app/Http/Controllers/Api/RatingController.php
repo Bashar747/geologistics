@@ -88,11 +88,38 @@ class RatingController extends Controller
 }
 
     private function authorizeAccess(Request $request, Shipment $shipment): void
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        if ($user->role === 'customer' && $shipment->customer_id !== $user->id) {
-            abort(403, 'You are not authorized to access this rating');
-        }
+    if (in_array($user->role, ['admin', 'dispatcher'], true)) {
+        return;
     }
+
+    if ($user->role === 'customer') {
+        abort_unless(
+            $shipment->customer_id === $user->id,
+            403,
+            'You are not authorized to access this rating'
+        );
+
+        return;
+    }
+
+    if ($user->role === 'driver') {
+        $hasActiveAssignment = $user->vehicleAssignments()
+            ->where('is_active', true)
+            ->where('vehicle_id', $shipment->vehicle_id)
+            ->exists();
+
+        abort_unless(
+            $hasActiveAssignment,
+            403,
+            'You are not authorized to access this rating'
+        );
+
+        return;
+    }
+
+    abort(403, 'You are not authorized to access this rating');
+}
 }

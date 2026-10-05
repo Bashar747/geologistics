@@ -14,7 +14,7 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'phone' => fake()->unique()->numerify('96793456732'),
+            'phone' => fake()->unique()->numerify('967#########'),
             'role' => 'customer',
             'email_verified_at' => now(),
             'password' => static::$password ??= bcrypt('password123'),

@@ -21,11 +21,12 @@ class VehicleLocationUpdated implements ShouldBroadcast
 
     // القناة اللي رح يوصل عليها البث - قناة عامة خاصة بكل مركبة على حدة
     public function broadcastOn(): array
-{
-    return [
-        new PrivateChannel('vehicle.' . $this->vehicle->id), // بدل new Channel(...)
-    ];
-}
+    {
+        return [
+            new PrivateChannel('vehicle.' . $this->vehicle->id),
+            new PrivateChannel('fleet'),
+        ];
+    }
     // اسم الحدث اللي رح يوصل للـ frontend (بدل الاسم الطويل الافتراضي)
     public function broadcastAs(): string
     {
@@ -35,11 +36,24 @@ class VehicleLocationUpdated implements ShouldBroadcast
     // البيانات اللي فعلياً رح تنبث - نتحكم فيها يدوياً حتى ما نسرب بيانات زيادة
     public function broadcastWith(): array
     {
+        $lat = $this->vehicle->last_location?->getLatitude();
+        $lng = $this->vehicle->last_location?->getLongitude();
+        $driverName = $this->vehicle->currentAssignment?->driver?->name;
+        $currentShipmentNumber = $this->vehicle->shipments()
+            ->whereIn('status', ['assigned', 'picked_up', 'in_transit'])
+            ->value('tracking_number');
+
         return [
             'vehicle_id' => $this->vehicle->id,
-            'location' => $this->vehicle->last_location,
+            'plate_number' => $this->vehicle->plate_number,
+            'driver_name' => $driverName,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'speed' => $this->vehicle->speed ?? 0,
             'status' => $this->vehicle->status,
+            'current_shipment_number' => $currentShipmentNumber,
             'updated_at' => $this->vehicle->updated_at,
+            'location' => $this->vehicle->last_location,
         ];
     }
 }

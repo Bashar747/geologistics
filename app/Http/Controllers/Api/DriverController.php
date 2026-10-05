@@ -30,17 +30,40 @@ class DriverController extends Controller
    public function show(Request $request, User $driver)
 {
     if ($driver->role !== 'driver') {
-        return response()->json(['message' => 'User is not a driver'], 404);
+        return response()->json([
+            'message' => 'User is not a driver',
+        ], 404);
     }
 
     $user = $request->user();
+
     if ($user->role === 'driver' && $user->id !== $driver->id) {
-        return response()->json(['message' => 'You are not authorized to view this driver'], 403);
+        return response()->json([
+            'message' => 'You are not authorized to view this driver',
+        ], 403);
     }
 
-    $driver->load(['driverProfile', 'vehicleAssignments' => function ($q) {
-        $q->where('is_active', true)->with('vehicle');
-    }]);
+    if ($user->role === 'customer') {
+        $hasShipmentWithDriver = $driver->vehicleAssignments()
+            ->where('is_active', true)
+            ->whereHas('vehicle.shipments', function ($query) use ($user) {
+                $query->where('customer_id', $user->id);
+            })
+            ->exists();
+
+        if (! $hasShipmentWithDriver) {
+            return response()->json([
+                'message' => 'You are not authorized to view this driver',
+            ], 403);
+        }
+    }
+
+    $driver->load([
+        'driverProfile',
+        'vehicleAssignments' => function ($q) {
+            $q->where('is_active', true)->with('vehicle');
+        },
+    ]);
 
     return new UserResource($driver);
 }

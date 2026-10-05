@@ -40,6 +40,10 @@ class NotificationController extends Controller
     // إرسال إشعار لمستخدم معين (أدمن/موزّع فقط)
     public function store(Request $request)
     {
+        abort_unless(
+    in_array($request->user()->role, ['admin', 'dispatcher'], true),
+    403
+);
         $validator = Validator::make($request->all(), [
             'user_id' => ['required', 'exists:users,id'],
             'channel' => ['required', 'in:sms,push,email'],
@@ -70,8 +74,12 @@ class NotificationController extends Controller
     }
 
     // إعادة محاولة إرسال إشعار فشل (أدمن/موزّع فقط)
-    public function retry(SentNotification $notification)
-    {
+   public function retry(Request $request, SentNotification $notification)
+{
+    abort_unless(
+        in_array($request->user()->role, ['admin', 'dispatcher'], true),
+        403
+    );
         if ($notification->status !== 'failed') {
             return response()->json(['message' => 'Only failed notifications can be retried'], 422);
         }

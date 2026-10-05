@@ -18,7 +18,9 @@ return new class extends Migration
             $table->timestamp('recorded_at')->useCurrent();
         });
 
-        DB::statement('CREATE INDEX location_logs_location_gist ON location_logs USING GIST (location)');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX location_logs_location_gist ON location_logs USING GIST (location)');
+        }
         DB::statement('CREATE INDEX location_logs_vehicle_time ON location_logs (vehicle_id, recorded_at DESC)');
     }
 

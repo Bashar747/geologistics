@@ -12,16 +12,22 @@ use App\Http\Controllers\Api\PublicTrackingController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AuditLogController;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])
+    ->middleware('throttle:10,1');
 
-Route::get('/track/{trackingNumber}', [PublicTrackingController::class, 'show']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:10,1');
+
+Route::get('/track/{trackingNumber}', [PublicTrackingController::class, 'show'])
+    ->middleware('throttle:30,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
     Route::apiResource('shipments', ShipmentController::class);
+   Route::post('/shipments/{shipment}/assign', [ShipmentController::class, 'assign'])
+    ->middleware('role:admin,dispatcher');
 
     Route::apiResource('vehicles', VehicleController::class)
         ->except(['store', 'update', 'destroy'])->names([

@@ -9,14 +9,21 @@
         {{ $title ?? 'GeoLogistics' }}
     </title>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+
+
 </head>
 
 <body class="bg-gray-100 text-gray-900">
 
     @auth
-
+               <script>
+                window.GeoLogisticsUserId = @json(auth()->id());
+               </script>
         <div class="min-h-screen flex">
 
             {{-- Sidebar --}}
@@ -46,45 +53,130 @@
                         Shipments
                     </a>
 
-                    <a
-                        href="/drivers"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Drivers
-                    </a>
+                    @if (in_array(auth()->user()->role, ['admin', 'dispatcher']))
+                        <a
+                            href="/drivers"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Drivers
+                        </a>
 
-                    <a
-                        href="/vehicles"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Vehicles
-                    </a>
+                        <a
+                            href="/vehicles"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Vehicles
+                        </a>
+                    @endif
 
-                    <a
-                        href="/tracking"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Tracking
-                    </a>
+                    @if (in_array(auth()->user()->role, ['admin', 'dispatcher', 'driver']))
+                        <a
+                            href="/tracking"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Tracking
+                        </a>
+                    @endif
 
-                    <a
-                        href="/payments"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Payments
-                    </a>
+                    @if (in_array(auth()->user()->role, ['admin', 'dispatcher', 'customer']))
+                        <a
+                            href="/payments"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Payments
+                        </a>
+                    @endif
 
-                    <a
-                        href="/users"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Users
-                    </a>
+                    @if (in_array(auth()->user()->role, ['admin', 'dispatcher']))
+                        <a
+                            href="/users"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Users
+                        </a>
+
+                        <a
+                            href="/geofences"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Geofences
+                        </a>
+                    @endif
+
+                   <a
+    href="/notifications"
+    wire:navigate
+    id="notifications-link"
+    class="flex items-center justify-between px-4 py-2 rounded hover:bg-gray-800"
+>
+    <span class="flex items-center gap-2">
+        <span>🔔</span>
+        <span>Notifications</span>
+    </span>
+
+    <span
+        id="notification-badge"
+        class="hidden min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold items-center justify-center"
+    >
+        0
+    </span>
+</a>
+
+<div
+    id="notification-toast"
+    class="hidden fixed top-5 right-5 z-[9999] w-80 rounded-lg bg-white text-gray-900 shadow-lg border border-gray-200 p-4"
+>
+    <div class="flex items-start gap-3">
+        <div class="text-lg">🔔</div>
+
+        <div class="min-w-0">
+            <div class="font-semibold text-sm">
+                New notification
+            </div>
+
+            <div
+                id="notification-toast-message"
+                class="mt-1 text-sm text-gray-600"
+            ></div>
+        </div>
+    </div>
+</div>
+                    @if (auth()->user()->role === 'admin')
+
+                        <a
+                            href="/audit-logs"
+                            wire:navigate
+                            class="block px-4 py-2 rounded hover:bg-gray-800"
+                        >
+                            Audit Logs
+                        </a>
+
+                    @endif
+                         <a
+    href="/profile"
+    wire:navigate
+    class="block px-4 py-2 rounded hover:bg-gray-800"
+>
+    Profile
+</a>
+
+            
+    @if(auth()->user()->role === 'admin')
+        <a
+            href="{{ route('settings.index') }}"
+            wire:navigate
+            class="flex items-center gap-2 px-4 py-2 rounded hover:bg-gray-800"
+        >
+            <span>⚙️</span>
+            <span>Settings</span>
+        </a>
+    @endif
 
                 </nav>
 

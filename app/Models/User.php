@@ -52,4 +52,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Shipment::class, 'customer_id');
     }
+
+    public static function scopeVisibleTo($query, User $user)
+    {
+        if ($user->role === 'admin' || $user->role === 'dispatcher') {
+            return $query;
+        }
+
+        if ($user->id === $user->id) { // or general self view
+            return $query->where('id', $user->id);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
 }

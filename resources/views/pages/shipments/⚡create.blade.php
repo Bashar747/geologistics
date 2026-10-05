@@ -3,6 +3,7 @@
 use App\Models\Shipment;
 use App\Models\ShipmentStatusHistory;
 use App\Models\User;
+use App\Services\ShipmentPricingService;
 use Clickbar\Magellan\Data\Geometries\Point;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,7 +17,14 @@ new class extends Component
     |--------------------------------------------------------------------------
     */
 
+    public function mount(): void
+{
+    $this->authorize('create', Shipment::class);
+}
+
     public string $customer_id = '';
+
+    public string $vehicle_id = '';
 
     public string $pickup_latitude = '';
 
@@ -56,9 +64,22 @@ new class extends Component
 
     public function getCustomersProperty()
     {
-        return User::query()
-            ->where('role', 'customer')
-            ->orderBy('name')
+         $user = auth()->user();
+
+    if ($user->role === 'customer') {
+        return User::where('id', $user->id)->get();
+    }
+
+    return User::query()
+        ->where('role', 'customer')
+        ->orderBy('name')
+        ->get();
+    }
+
+    public function getVehiclesProperty()
+    {
+        return \App\Models\Vehicle::query()
+            ->orderBy('plate_number')
             ->get();
     }
 
@@ -107,6 +128,8 @@ new class extends Component
 
     public function save(): void
     {
+
+        $this->authorize('create', Shipment::class);
         $validated = $this->validate([
 
             /*
@@ -119,6 +142,12 @@ new class extends Component
                 'required',
                 'integer',
                 'exists:users,id',
+            ],
+
+            'vehicle_id' => [
+                'nullable',
+                'integer',
+                'exists:vehicles,id',
             ],
 
 
@@ -166,16 +195,16 @@ new class extends Component
             |--------------------------------------------------------------------------
             */
 
-            'estimated_arrival' => [
-                'nullable',
-                'date',
-            ],
+          'estimated_arrival' => [
+             'nullable',
+              'date',
+               ],
 
-            'total_amount' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
+             'total_amount' => [
+                 'nullable',
+                  'numeric',
+                  'min:0',
+                ],
 
 
             /*
@@ -250,6 +279,10 @@ new class extends Component
 
         DB::transaction(function () use ($validated) {
 
+
+        $initialStatus = $this->vehicle_id !== ''
+    ? 'assigned'
+    : 'pending';
             $shipment = Shipment::create([
 
                 /*
@@ -270,17 +303,11 @@ new class extends Component
                 'customer_id' => $validated['customer_id'],
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Vehicle
-                |--------------------------------------------------------------------------
-                |
-                | New shipments start without a vehicle.
-                | Vehicle assignment will happen later.
-                |
-                */
+               
 
-                'vehicle_id' => null,
+                'vehicle_id' => $this->vehicle_id !== '' ? $this->vehicle_id : null,
+
+               'status' => $initialStatus,
 
 
                 /*
@@ -316,7 +343,7 @@ new class extends Component
                 |--------------------------------------------------------------------------
                 */
 
-                'status' => 'pending',
+                
 
 
                 /*
@@ -325,14 +352,12 @@ new class extends Component
                 |--------------------------------------------------------------------------
                 */
 
-                'estimated_arrival' =>
-                    $validated['estimated_arrival'] ?: null,
+               'estimated_arrival' => null,
 
-                'total_amount' =>
-                    $validated['total_amount'],
+'total_amount' => null,
             ]);
 
-
+              app(ShipmentPricingService::class)->apply($shipment);
             /*
             |--------------------------------------------------------------------------
             | Create Shipment Items
@@ -377,13 +402,13 @@ new class extends Component
                     $shipment->id,
 
                 'status' =>
-                    'pending',
+                    $shipment->status,
 
                 'changed_by' =>
                     auth()->id(),
 
                 'note' =>
-                    'Shipment created.',
+                    $this->vehicle_id !== '' ? 'Shipment created and assigned to vehicle.' : 'Shipment created.',
             ]);
         });
 
@@ -576,74 +601,22 @@ new class extends Component
                 </div>
 
 
-                {{-- Total Amount --}}
+                {{-- Vehicle --}}
                 <div>
 
                     <label
-                        for="total_amount"
+                        for="vehicle_id"
                         class="mb-2 block text-sm font-medium
                                text-slate-700"
                     >
-                        Total Amount
+                        Vehicle (Optional)
                     </label>
 
-                    <div class="relative">
-
-                        <span
-                            class="absolute left-4 top-1/2
-                                   -translate-y-1/2
-                                   text-sm text-slate-400"
-                        >
-                            $
-                        </span>
-
-                        <input
-                            id="total_amount"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            wire:model="total_amount"
-                            placeholder="0.00"
-                            class="w-full rounded-xl border
-                                   border-slate-300
-                                   px-4 py-3 pl-8
-                                   outline-none transition
-                                   focus:border-blue-500
-                                   focus:ring-4
-                                   focus:ring-blue-500/10"
-                        >
-
-                    </div>
-
-
-                    @error('total_amount')
-
-                        <p class="mt-2 text-sm text-red-600">
-                            {{ $message }}
-                        </p>
-
-                    @enderror
-
-                </div>
-
-
-                {{-- Estimated Arrival --}}
-                <div>
-
-                    <label
-                        for="estimated_arrival"
-                        class="mb-2 block text-sm font-medium
-                               text-slate-700"
-                    >
-                        Estimated Arrival
-                    </label>
-
-                    <input
-                        id="estimated_arrival"
-                        type="datetime-local"
-                        wire:model="estimated_arrival"
+                    <select
+                        id="vehicle_id"
+                        wire:model="vehicle_id"
                         class="w-full rounded-xl border
-                               border-slate-300
+                               border-slate-300 bg-white
                                px-4 py-3
                                outline-none transition
                                focus:border-blue-500
@@ -651,17 +624,111 @@ new class extends Component
                                focus:ring-blue-500/10"
                     >
 
+                        <option value="">
+                            Unassigned (Pending)
+                        </option>
 
-                    @error('estimated_arrival')
+                        @foreach ($this->vehicles as $vehicle)
 
-                        <p class="mt-2 text-sm text-red-600">
-                            {{ $message }}
-                        </p>
+                            <option value="{{ $vehicle->id }}">
+                                {{ $vehicle->plate_number }} — {{ $vehicle->model }} ({{ $vehicle->type }})
+                            </option>
 
+                        @endforeach
+
+                    </select>
+
+                    @error('vehicle_id')
+                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                     @enderror
 
                 </div>
 
+
+               {{-- Total Amount --}}
+<div>
+
+    <label
+        for="total_amount"
+        class="mb-2 block text-sm font-medium text-slate-700"
+    >
+        Total Amount
+    </label>
+
+    <div class="relative">
+
+        <span
+            class="absolute left-4 top-1/2
+                   -translate-y-1/2
+                   text-sm text-slate-400"
+        >
+            {{ \App\Models\Setting::getValue('currency', 'USD') }}
+        </span>
+
+        <input
+            id="total_amount"
+            type="number"
+            step="0.01"
+            wire:model="total_amount"
+            readonly
+            placeholder="Calculated automatically"
+            class="w-full rounded-xl border
+                   border-slate-300
+                   bg-slate-50
+                   px-4 py-3 pl-16
+                   text-slate-600
+                   outline-none"
+        >
+
+    </div>
+
+    <p class="mt-2 text-xs text-slate-500">
+        Automatically calculated from the shipment distance and pricing settings.
+    </p>
+
+    @error('total_amount')
+        <p class="mt-2 text-sm text-red-600">
+            {{ $message }}
+        </p>
+    @enderror
+
+</div>
+
+
+               {{-- Estimated Arrival --}}
+<div>
+
+    <label
+        for="estimated_arrival"
+        class="mb-2 block text-sm font-medium text-slate-700"
+    >
+        Estimated Arrival
+    </label>
+
+    <input
+        id="estimated_arrival"
+        type="datetime-local"
+        wire:model="estimated_arrival"
+        readonly
+        class="w-full rounded-xl border
+               border-slate-300
+               bg-slate-50
+               px-4 py-3
+               text-slate-600
+               outline-none"
+    >
+
+    <p class="mt-2 text-xs text-slate-500">
+        Automatically calculated using the configured average speed.
+    </p>
+
+    @error('estimated_arrival')
+        <p class="mt-2 text-sm text-red-600">
+            {{ $message }}
+        </p>
+    @enderror
+
+</div>
 
                 {{-- Initial Status --}}
                 <div>

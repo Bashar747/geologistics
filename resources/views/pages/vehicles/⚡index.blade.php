@@ -42,6 +42,8 @@ new class extends Component
             return;
         }
 
+        $this->authorize('delete', $vehicle);
+
         /*
         |--------------------------------------------------------------------------
         | Don't delete a vehicle that has active assignments
@@ -92,6 +94,7 @@ new class extends Component
     public function getVehiclesProperty()
     {
         return Vehicle::query()
+            ->visibleTo(auth()->user())
             ->with([
                 'currentAssignment.driver:id,name,phone',
             ])
@@ -153,25 +156,29 @@ new class extends Component
         </div>
 
 
-        <a
-            href="{{ route('vehicles.create') }}"
-            wire:navigate
-            class="inline-flex items-center
-                   justify-center gap-2
-                   rounded-xl bg-blue-600
-                   px-5 py-3
-                   text-sm font-semibold
-                   text-white
-                   transition hover:bg-blue-700"
-        >
+      @can('create', App\Models\Vehicle::class)
 
-            <span class="text-lg leading-none">
-                +
-            </span>
+    <a
+        href="{{ route('vehicles.create') }}"
+        wire:navigate
+        class="inline-flex items-center
+               justify-center gap-2
+               rounded-xl bg-blue-600
+               px-5 py-3
+               text-sm font-semibold
+               text-white
+               transition hover:bg-blue-700"
+    >
 
-            Create Vehicle
+        <span class="text-lg leading-none">
+            +
+        </span>
 
-        </a>
+        Create Vehicle
+
+    </a>
+
+@endcan
 
     </div>
 
@@ -553,36 +560,44 @@ new class extends Component
 
 
                                     {{-- Edit --}}
-                                    <a
-                                        href="{{ route('vehicles.edit', $vehicle) }}"
-                                        wire:navigate
-                                        class="rounded-lg
-                                               border border-blue-200
-                                               px-3 py-2
-                                               text-xs font-semibold
-                                               text-blue-600
-                                               transition
-                                               hover:bg-blue-50"
-                                    >
-                                        Edit
-                                    </a>
+                                   @can('update', $vehicle)
+
+    <a
+        href="{{ route('vehicles.edit', $vehicle) }}"
+        wire:navigate
+        class="rounded-lg
+               border border-blue-200
+               px-3 py-2
+               text-xs font-semibold
+               text-blue-600
+               transition
+               hover:bg-blue-50"
+    >
+        Edit
+    </a>
+
+@endcan
 
 
                                     {{-- Delete --}}
-                                    <button
-                                        type="button"
-                                        wire:click="deleteVehicle({{ $vehicle->id }})"
-                                        wire:confirm="Are you sure you want to delete this vehicle?"
-                                        class="rounded-lg
-                                               border border-red-200
-                                               px-3 py-2
-                                               text-xs font-semibold
-                                               text-red-600
-                                               transition
-                                               hover:bg-red-50"
-                                    >
-                                        Delete
-                                    </button>
+                                   @can('delete', $vehicle)
+
+    <button
+        type="button"
+        wire:click="deleteVehicle({{ $vehicle->id }})"
+        wire:confirm="Are you sure you want to delete this vehicle?"
+        class="rounded-lg
+               border border-red-200
+               px-3 py-2
+               text-xs font-semibold
+               text-red-600
+               transition
+               hover:bg-red-50"
+    >
+        Delete
+    </button>
+
+@endcan
 
                                 </div>
 

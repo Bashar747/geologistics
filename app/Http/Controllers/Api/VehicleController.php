@@ -15,7 +15,7 @@ use App\Http\Resources\VehicleResource;
 class VehicleController extends Controller
 {
    
-  public function index(Request $request)
+ public function index(Request $request)
 {
     $user = $request->user();
 
@@ -27,11 +27,16 @@ class VehicleController extends Controller
             ->value('vehicle_id');
 
         $query->where('id', $vehicleId);
+    } elseif ($user->role === 'customer') {
+        $query->whereHas('shipments', function ($q) use ($user) {
+            $q->where('customer_id', $user->id);
+        });
     }
 
-    return VehicleResource::collection($query->paginate(15));
+    return VehicleResource::collection(
+        $query->paginate(15)
+    );
 }
-
    
     public function store(Request $request)
     {
@@ -158,18 +163,11 @@ class VehicleController extends Controller
         ]);
     }
 
-    private function authorizeAccess(Request $request, Vehicle $vehicle): void
-    {
-        $user = $request->user();
-
-        if ($user->role === 'driver') {
-            $activeVehicleId = $user->vehicleAssignments()
-                ->where('is_active', true)
-                ->value('vehicle_id');
-
-            if ($vehicle->id !== $activeVehicleId) {
-                abort(403, 'You are not assigned to this vehicle');
-            }
-        }
-    }
+   private function authorizeAccess(Request $request, Vehicle $vehicle): void
+{
+    abort_unless(
+        $request->user()->can('view', $vehicle),
+        403
+    );
+}
 }

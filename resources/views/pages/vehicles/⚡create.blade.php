@@ -11,8 +11,16 @@ new class extends Component
 
     public string $type = '';
 
+
+     public function mount(): void
+{
+    $this->authorize('create', Vehicle::class);
+}
     public function save(): void
     {
+
+        $this->authorize('create', Vehicle::class);
+
         $validated = $this->validate([
             'plate_number' => [
                 'required',

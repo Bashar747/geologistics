@@ -18,6 +18,8 @@ new class extends Component
 
     public function mount(Vehicle $vehicle): void
     {
+
+         $this->authorize('update', $vehicle);
         $this->vehicle = $vehicle;
 
         $this->plate_number = $vehicle->plate_number ?? '';
@@ -28,6 +30,9 @@ new class extends Component
 
     public function update(): void
     {
+
+
+          $this->authorize('update', $this->vehicle);
         $validated = $this->validate([
             'plate_number' => [
                 'required',

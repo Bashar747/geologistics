@@ -56,7 +56,11 @@ class ShipmentController extends Controller
                 'errors' => $validator->errors(),
             ], 422);
         }
-
+          if (! $request->user()->can('create', Shipment::class)) {
+    return response()->json([
+        'message' => 'You are not authorized to create shipments',
+    ], 403);
+}
         $shipment = DB::transaction(function () use ($request) {
             $shipment = Shipment::create([
                 'tracking_number' => 'GL-' . strtoupper(Str::random(10)),
@@ -95,16 +99,17 @@ class ShipmentController extends Controller
         return new ShipmentResource($shipment);
     }
 
-    public function update(Request $request, Shipment $shipment)
-    {
-        $user = $request->user();
+  public function update(Request $request, Shipment $shipment)
+{
+    $user = $request->user();
 
-        if (! in_array($user->role, ['driver', 'dispatcher', 'admin'], true)) {
-            return response()->json(['message' => 'You are not authorized to update this shipment\'s status'], 403);
-        }
-
+if (! $request->user()->can('update', $shipment)) {
+    return response()->json([
+        'message' => 'You are not authorized to update this shipment\'s status',
+    ], 403);
+}
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'in:pending,assigned,picked_up,delivered,cancelled'],
+            'status' => ['required', 'in:pending,assigned,picked_up,in_transit,delivered,cancelled'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -115,6 +120,23 @@ class ShipmentController extends Controller
             ], 422);
         }
 
+        if ($user->role === 'driver') {
+            $vehicleIds = $user->vehicleAssignments()->where('is_active', true)->pluck('vehicle_id');
+            if (! in_array($shipment->vehicle_id, $vehicleIds->toArray())) {
+                return response()->json(['message' => 'You are not authorized to update this shipment'], 403);
+            }
+
+            $driverTransitions = [
+                'assigned' => 'picked_up',
+                'picked_up' => 'in_transit',
+                'in_transit' => 'delivered',
+            ];
+
+            if (!isset($driverTransitions[$shipment->status]) || $driverTransitions[$shipment->status] !== $request->status) {
+                return response()->json(['message' => 'Invalid status transition for driver'], 422);
+            }
+        }
+
         DB::transaction(function () use ($request, $shipment, $user) {
             $shipment->update(['status' => $request->status]);
 
@@ -122,7 +144,7 @@ class ShipmentController extends Controller
                 'shipment_id' => $shipment->id,
                 'status' => $request->status,
                 'changed_by' => $user->id,
-                'note' => $request->note,
+                'note' => $request->note ?? "Status changed to {$request->status}",
             ]);
         });
 
@@ -131,24 +153,80 @@ class ShipmentController extends Controller
             'shipment' => new ShipmentResource($shipment->fresh(['items', 'statusHistory'])),
         ]);
     }
+    public function assign(Request $request, Shipment $shipment)
+{
+    $validator = Validator::make($request->all(), [
+        'vehicle_id' => ['required', 'integer', 'exists:vehicles,id'],
+    ]);
 
-    public function destroy(Request $request, Shipment $shipment)
-    {
-        $user = $request->user();
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+    if (! $request->user()->can('update', $shipment)) {
+    return response()->json([
+        'message' => 'You are not authorized to assign this shipment',
+    ], 403);
+}
 
-        if ($user->role === 'customer' && $shipment->customer_id !== $user->id) {
-            return response()->json(['message' => 'You are not authorized to delete this shipment'], 403);
-        }
-
-        if ($shipment->status !== 'pending') {
-            return response()->json(['message' => 'Cannot delete a shipment that has already been assigned or progressed'], 422);
-        }
-
-        $shipment->delete();
-
-        return response()->json(['message' => 'Shipment deleted']);
+    if (! in_array($shipment->status, ['pending', 'assigned'], true)) {
+        return response()->json([
+            'message' => 'Only pending or already assigned shipments can be assigned.',
+        ], 422);
     }
 
+    $user = $request->user();
+
+    DB::transaction(function () use ($request, $shipment, $user) {
+        $shipment->update([
+            'vehicle_id' => $request->integer('vehicle_id'),
+            'status' => 'assigned',
+        ]);
+
+        ShipmentStatusHistory::create([
+            'shipment_id' => $shipment->id,
+            'status' => 'assigned',
+            'changed_by' => $user->id,
+            'note' => 'Vehicle assigned to shipment',
+        ]);
+    });
+
+    return response()->json([
+        'message' => 'Vehicle assigned to shipment successfully',
+        'shipment' => new ShipmentResource(
+            $shipment->fresh([
+                'items',
+                'customer',
+                'vehicle.currentAssignment.driver',
+                'statusHistory',
+            ])
+        ),
+    ]);
+}
+   public function destroy(Request $request, Shipment $shipment)
+{
+    $user = $request->user();
+
+    if (! $user->can('delete', $shipment)) {
+        return response()->json([
+            'message' => 'You are not authorized to delete this shipment',
+        ], 403);
+    }
+
+    if ($shipment->status !== 'pending') {
+        return response()->json([
+            'message' => 'Cannot delete a shipment that has already been assigned or progressed',
+        ], 422);
+    }
+
+    $shipment->delete();
+
+    return response()->json([
+        'message' => 'Shipment deleted',
+    ]);
+}
     private function authorizeAccess(Request $request, Shipment $shipment): void
     {
         $user = $request->user();

@@ -3,12 +3,22 @@
 use App\Models\Vehicle;
 use Livewire\Component;
 
+use Livewire\WithPagination;
 new class extends Component
 {
-    public Vehicle $vehicle;
 
+
+     use WithPagination;
+
+    public Vehicle $vehicle;
+    public int $historyPerPage = 10;
+
+
+   
     public function mount(Vehicle $vehicle): void
     {
+
+         $this->authorize('view', $vehicle);
         $this->vehicle = $vehicle->load([
             'currentAssignment.driver:id,name,phone',
             'shipments' => function ($query) {
@@ -50,6 +60,16 @@ new class extends Component
                 'bg-slate-100 text-slate-700',
         };
     }
+    public function getLocationHistoryProperty()
+{
+    return $this->vehicle
+        ->locationLogs()
+        ->latest('recorded_at')
+        ->paginate(
+            $this->historyPerPage,
+            pageName: 'location-history'
+        );
+}
 };
 ?>
 
@@ -449,34 +469,14 @@ new class extends Component
                 @if ($vehicle->last_location)
 
                     <div
-                        class="rounded-xl
-                               border border-blue-200
-                               bg-blue-50
-                               px-4 py-5"
+                        id="vehicle-map"
+                        class="h-64 w-full rounded-lg"
+                    ></div>
+
+                    <div
+                        class="vehicle-location-info mt-2 text-xs text-blue-600"
                     >
-
-                        <p
-                            class="text-sm font-medium
-                                   text-blue-800"
-                        >
-                            Location data available
-                        </p>
-
-                        <p
-                            class="mt-1 text-sm
-                                   text-blue-700"
-                        >
-                            The vehicle has a recorded last location.
-                        </p>
-
-                        <p
-                            class="mt-3 text-xs
-                                   text-blue-600"
-                        >
-                            Map visualization will be connected
-                            through the tracking system.
-                        </p>
-
+                        Live tracking via WebSocket
                     </div>
 
                 @else
@@ -512,7 +512,161 @@ new class extends Component
 
     </div>
 
+     {{-- ============================================================ --}}
+{{-- Location History --}}
+{{-- ============================================================ --}}
 
+<div class="rounded-2xl border border-slate-200 bg-white">
+
+    <div class="border-b border-slate-200 px-6 py-5">
+
+        <h2 class="text-lg font-semibold text-slate-900">
+            Location History
+        </h2>
+
+        <p class="mt-1 text-sm text-slate-500">
+            Recent location updates reported by this vehicle.
+        </p>
+
+    </div>
+
+    <div class="overflow-x-auto">
+
+        <table class="w-full">
+
+            <thead class="bg-slate-50">
+
+                <tr class="text-left text-xs font-semibold
+                           uppercase tracking-wider text-slate-500">
+
+                    <th class="px-6 py-4">
+                        Recorded At
+                    </th>
+
+                    <th class="px-6 py-4">
+                        Location
+                    </th>
+
+                    <th class="px-6 py-4">
+                        Speed
+                    </th>
+
+                    <th class="px-6 py-4">
+                        Heading
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <tbody class="divide-y divide-slate-100">
+
+                @forelse ($this->locationHistory as $log)
+
+                    <tr class="transition hover:bg-slate-50">
+
+                        <td class="whitespace-nowrap px-6 py-4">
+
+                            <span class="text-sm text-slate-700">
+                                {{ $log->recorded_at->format('M j, Y H:i:s') }}
+                            </span>
+
+                        </td>
+
+                        <td class="whitespace-nowrap px-6 py-4">
+
+                            @if ($log->location)
+
+                                <span class="text-sm text-slate-700">
+                                    {{ number_format($log->location->getLatitude(), 6) }},
+                                    {{ number_format($log->location->getLongitude(), 6) }}
+                                </span>
+
+                            @else
+
+                                <span class="text-slate-400">
+                                    —
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td class="whitespace-nowrap px-6 py-4">
+
+                            @if ($log->speed !== null)
+
+                                <span class="text-sm text-slate-700">
+                                    {{ number_format((float) $log->speed, 2) }}
+                                </span>
+
+                            @else
+
+                                <span class="text-slate-400">
+                                    —
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td class="whitespace-nowrap px-6 py-4">
+
+                            @if ($log->heading !== null)
+
+                                <span class="text-sm text-slate-700">
+                                    {{ $log->heading }}°
+                                </span>
+
+                            @else
+
+                                <span class="text-slate-400">
+                                    —
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                    </tr>
+
+                @empty
+
+                    <tr>
+
+                        <td colspan="4" class="px-6 py-10 text-center">
+
+                            <p class="text-sm font-medium text-slate-700">
+                                No location history yet.
+                            </p>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Location updates will appear here once this vehicle reports its position.
+                            </p>
+
+                        </td>
+
+                    </tr>
+
+                @endforelse
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    @if ($this->locationHistory->hasPages())
+
+        <div class="border-t border-slate-200 px-6 py-4">
+
+            {{ $this->locationHistory->links() }}
+
+        </div>
+
+    @endif
+
+</div>
     {{-- ============================================================= --}}
     {{-- Active Shipments --}}
     {{-- ============================================================= --}}
@@ -772,3 +926,133 @@ new class extends Component
     </div>
 
 </div>
+
+
+@script
+
+<script>
+
+    const vehicleId = @json($vehicle->id);
+
+    function initializeVehicleMap() {
+
+        const mapElement = document.getElementById('vehicle-map');
+
+        if (!mapElement) {
+            return;
+        }
+
+        if (mapElement._leaflet_id) {
+            return;
+        }
+
+        const vehicleLat = @json($vehicle->last_location ? $vehicle->last_location->getLatitude() : null);
+        const vehicleLng = @json($vehicle->last_location ? $vehicle->last_location->getLongitude() : null);
+
+        if (vehicleLat === null || vehicleLng === null) {
+            return;
+        }
+
+        const map = L.map(mapElement, {
+            zoomControl: true,
+            scrollWheelZoom: true,
+        });
+
+        L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }
+        ).addTo(map);
+
+        const vehicleIcon = L.divIcon({
+            className: 'vehicle-marker',
+            html: `
+                <div
+                    style="
+                        width:42px;
+                        height:42px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        border-radius:50%;
+                        background:#2563eb;
+                        border:4px solid white;
+                        box-shadow:0 4px 12px rgba(0,0,0,.25);
+                        font-size:20px;
+                    "
+                >
+                    🚚
+                </div>
+            `,
+            iconSize: [42, 42],
+            iconAnchor: [21, 21],
+        });
+
+        const vehicleMarker = L.marker(
+            [vehicleLat, vehicleLng],
+            {
+                icon: vehicleIcon,
+                title: 'Current Vehicle Location',
+            }
+        )
+        .addTo(map)
+        .bindPopup(`
+            <div style="min-width:160px">
+                <strong>🚚 Vehicle</strong>
+                <br>
+                <span style="color:#64748b">
+                    Current location
+                </span>
+            </div>
+        `);
+
+        map.setView([vehicleLat, vehicleLng], 14);
+
+        window.__vehicleMap = map;
+        window.__vehicleMarker = vehicleMarker;
+
+    }
+
+    document.addEventListener('livewire:navigating', () => {
+    if (window.__vehicleLocationSubscription) {
+        window.__vehicleLocationSubscription.leave();
+        window.__vehicleLocationSubscription = null;
+    }
+
+    if (window.__vehicleMap) {
+        window.__vehicleMap.remove();
+        window.__vehicleMap = null;
+        window.__vehicleMarker = null;
+    }
+});
+
+    document.addEventListener('livewire:navigated', initializeVehicleMap);
+
+    initializeVehicleMap();
+
+    if (vehicleId && window.subscribeToVehicleLocation) {
+        window.__vehicleLocationSubscription = subscribeToVehicleLocation(vehicleId, {
+            onUpdate: (data) => {
+                if (data.location) {
+                    const lat = data.location.coordinates[1];
+                    const lng = data.location.coordinates[0];
+
+                    if (window.__vehicleMarker && window.__vehicleMap) {
+                        window.__vehicleMarker.setLatLng([lat, lng]);
+                        window.__vehicleMap.panTo([lat, lng]);
+                    }
+
+                    const locationInfo = document.querySelector('.vehicle-location-info');
+                    if (locationInfo) {
+                        locationInfo.textContent = `Live updated · ${new Date().toLocaleTimeString()}`;
+                    }
+                }
+            },
+        });
+    }
+
+</script>
+
+@endscript

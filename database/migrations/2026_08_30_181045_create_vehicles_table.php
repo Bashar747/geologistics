@@ -23,8 +23,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-       
-        DB::statement('CREATE INDEX vehicles_last_location_gist ON vehicles USING GIST (last_location)');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX vehicles_last_location_gist ON vehicles USING GIST (last_location)');
+        }
     }
 
     public function down(): void

@@ -12,6 +12,8 @@ new class extends Component
 
     public string $customer_id = '';
 
+    public string $vehicle_id = '';
+
     public string $pickup_latitude = '';
 
     public string $pickup_longitude = '';
@@ -29,9 +31,12 @@ new class extends Component
 
     public function mount(Shipment $shipment): void
     {
+            $this->authorize('update', $shipment);
         $this->shipment = $shipment->load('items');
 
         $this->customer_id = (string) $shipment->customer_id;
+
+        $this->vehicle_id = (string) ($shipment->vehicle_id ?? '');
 
         $this->total_amount = (string) ($shipment->total_amount ?? '');
 
@@ -81,6 +86,13 @@ if ($dropoff) {
             ->get();
     }
 
+    public function getVehiclesProperty()
+    {
+        return \App\Models\Vehicle::query()
+            ->orderBy('plate_number')
+            ->get();
+    }
+
 
     public function addItem(): void
     {
@@ -109,11 +121,19 @@ if ($dropoff) {
 
     public function update(): void
     {
+
+        $this->authorize('update', $this->shipment);
         $validated = $this->validate([
             'customer_id' => [
                 'required',
                 'integer',
                 'exists:users,id',
+            ],
+
+            'vehicle_id' => [
+                'nullable',
+                'integer',
+                'exists:vehicles,id',
             ],
 
             'pickup_latitude' => [
@@ -207,6 +227,8 @@ if ($dropoff) {
 
             $this->shipment->update([
                 'customer_id' => $validated['customer_id'],
+                'vehicle_id' => $this->vehicle_id !== '' ? $this->vehicle_id : null,
+                'status' => $this->vehicle_id !== '' && $this->shipment->status === 'pending' ? 'assigned' : $this->shipment->status,
 
                 'pickup_location' => Point::makeGeodetic(
                     (float) $validated['pickup_latitude'],
@@ -449,6 +471,51 @@ if ($dropoff) {
                     </select>
 
                     @error('customer_id')
+                        <p class="mt-2 text-sm text-red-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Vehicle --}}
+                <div>
+
+                    <label
+                        for="vehicle_id"
+                        class="mb-2 block text-sm font-medium
+                               text-slate-700"
+                    >
+                        Vehicle (Optional)
+                    </label>
+
+                    <select
+                        id="vehicle_id"
+                        wire:model="vehicle_id"
+                        class="w-full rounded-xl border
+                               border-slate-300 bg-white
+                               px-4 py-3 outline-none
+                               focus:border-blue-500
+                               focus:ring-4
+                               focus:ring-blue-500/10"
+                    >
+
+                        <option value="">
+                            Unassigned (Pending)
+                        </option>
+
+                        @foreach ($this->vehicles as $vehicle)
+
+                            <option value="{{ $vehicle->id }}">
+                                {{ $vehicle->plate_number }} — {{ $vehicle->model }} ({{ $vehicle->type }})
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                    @error('vehicle_id')
                         <p class="mt-2 text-sm text-red-600">
                             {{ $message }}
                         </p>

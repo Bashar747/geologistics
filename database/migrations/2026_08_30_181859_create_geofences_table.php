@@ -17,7 +17,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('CREATE INDEX geofences_area_gist ON geofences USING GIST (area_polygon)');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX geofences_area_gist ON geofences USING GIST (area_polygon)');
+        }
     }
 
     public function down(): void

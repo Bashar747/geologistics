@@ -64,4 +64,26 @@ class Shipment extends Model
     {
         return $this->hasOne(Rating::class);
     }
+
+    public function proof(): HasOne
+{
+    return $this->hasOne(ShipmentProof::class);
+}
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->role === 'admin' || $user->role === 'dispatcher') {
+            return $query;
+        }
+
+        if ($user->role === 'customer') {
+            return $query->where('customer_id', $user->id);
+        }
+
+        if ($user->role === 'driver') {
+            $vehicleIds = $user->vehicleAssignments()->where('is_active', true)->pluck('vehicle_id');
+            return $query->whereIn('vehicle_id', $vehicleIds);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
 }

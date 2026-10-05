@@ -23,7 +23,7 @@ class PublicTrackingController extends Controller
             return response()->json(['message' => 'Tracking number not found'], 404);
         }
 
-        // منرجع بس المعلومات المسموح للعموم يشوفوها - بدون بيانات العميل الشخصية أو الدفع
+        
         return response()->json([
             'tracking_number' => $shipment->tracking_number,
             'status' => $shipment->status,
@@ -32,7 +32,7 @@ class PublicTrackingController extends Controller
             'estimated_arrival' => $shipment->estimated_arrival,
             'items' => $shipment->items,
             'status_history' => $shipment->statusHistory,
-            // موقع المركبة اللحظي بس إذا الشحنة فعلياً بالطريق (مش قبل التخصيص ومش بعد التسليم)
+         // موقع المركبة اللحظي بعد تخصيص الشحنة وحتى استلامها
             'current_vehicle_location' => in_array($shipment->status, ['assigned', 'picked_up'])
                 ? $shipment->vehicle?->last_location
                 : null,

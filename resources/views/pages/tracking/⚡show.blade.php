@@ -1182,12 +1182,41 @@ new class extends Component
     |--------------------------------------------------------------------------
     */
 
+
+    document.addEventListener('livewire:navigating', () => {
+    if (window.__vehicleLocationSubscription) {
+        window.__vehicleLocationSubscription.leave();
+        window.__vehicleLocationSubscription = null;
+    }
+
+    if (window.shipmentMap) {
+        window.shipmentMap.remove();
+        window.shipmentMap = null;
+        window.shipmentVehicleMarker = null;
+    }
+});
+
     document.addEventListener(
         'livewire:navigated',
         initializeShipmentMap
     );
 
     initializeShipmentMap();
+
+    const vehicleId = @json($shipment?->vehicle_id);
+
+    if (vehicleId && window.subscribeToVehicleLocation) {
+        window.__vehicleLocationSubscription = subscribeToVehicleLocation(vehicleId, {
+            onUpdate: (data) => {
+                if (data.location && window.shipmentVehicleMarker && window.shipmentMap) {
+                    const lat = data.location.coordinates[1];
+                    const lng = data.location.coordinates[0];
+                    window.shipmentVehicleMarker.setLatLng([lat, lng]);
+                    window.shipmentMap.panTo([lat, lng]);
+                }
+            },
+        });
+    }
 
 </script>
 

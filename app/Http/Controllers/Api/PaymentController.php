@@ -34,11 +34,9 @@ class PaymentController extends Controller
         if ($shipment->payment) {
             return response()->json(['message' => 'A payment already exists for this shipment'], 422);
         }
-
-        $validator = Validator::make($request->all(), [
-            'amount' => ['required', 'numeric', 'min:0'],
-            'method' => ['required', 'in:cash,card,wallet'],
-        ]);
+$validator = Validator::make($request->all(), [
+    'method' => ['required', 'in:cash,card,wallet'],
+]);
 
         if ($validator->fails()) {
             return response()->json([
@@ -47,16 +45,24 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $payment = Payment::create([
-            'shipment_id' => $shipment->id,
-            'amount' => $request->amount,
-            'method' => $request->method,
-            // الدفع كاش بيصير "paid" فوراً، وباقي الطرق تنتظر تأكيد (مثلاً من بوابة دفع خارجية لاحقاً)
-            'status' => $request->method === 'cash' ? 'paid' : 'pending',
-            'paid_at' => $request->method === 'cash' ? now() : null,
-        ]);
+   $amount = $shipment->total_amount;
 
-        $shipment->update(['total_amount' => $request->amount]);
+if ($amount === null) {
+    return response()->json([
+        'message' => 'Shipment amount has not been calculated yet',
+    ], 422);
+}
+
+$payment = Payment::create([
+    'shipment_id' => $shipment->id,
+    'amount' => $amount,
+    'method' => $request->method,
+    // الدفع كاش بيصير "paid" فوراً، وباقي الطرق تنتظر تأكيد
+    'status' => $request->method === 'cash' ? 'paid' : 'pending',
+    'paid_at' => $request->method === 'cash' ? now() : null,
+]);
+
+        
 
         return response()->json([
             'message' => 'Payment created successfully',

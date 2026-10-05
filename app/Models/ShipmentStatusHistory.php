@@ -10,8 +10,7 @@ class ShipmentStatusHistory extends Model
 {
     use HasFactory;
 
-         protected $table = 'shipment_status_history';
-
+protected $table = 'shipment_status_histories';
     public $timestamps = false; 
     const CREATED_AT = 'created_at';
 

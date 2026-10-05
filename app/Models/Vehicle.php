@@ -46,4 +46,22 @@ class Vehicle extends Model
     {
         return $this->hasMany(LocationLog::class);
     }
+
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->role === 'admin' || $user->role === 'dispatcher') {
+            return $query;
+        }
+
+        if ($user->role === 'driver') {
+            $vehicleIds = $user->vehicleAssignments()->where('is_active', true)->pluck('vehicle_id');
+            return $query->whereIn('id', $vehicleIds);
+        }
+
+        if ($user->role === 'customer') {
+            return $query->whereHas('shipments', fn($q) => $q->where('customer_id', $user->id));
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
 }

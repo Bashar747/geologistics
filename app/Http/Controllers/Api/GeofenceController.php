@@ -128,9 +128,38 @@ class GeofenceController extends Controller
     }
 
     // 🎯 فحص: مركبة معينة، هلق، جوا أي مناطق (حسب آخر موقع معروف لها)؟
-    public function checkVehicle(Vehicle $vehicle)
-    {
-        if (! $vehicle->last_location) {
+    public function checkVehicle(Request $request, Vehicle $vehicle)
+{
+    $user = $request->user();
+
+    if (in_array($user->role, ['admin', 'dispatcher'], true)) {
+        // Admin and dispatcher can check any vehicle.
+    } elseif ($user->role === 'driver') {
+        $hasActiveAssignment = $user->vehicleAssignments()
+            ->where('is_active', true)
+            ->where('vehicle_id', $vehicle->id)
+            ->exists();
+
+        abort_unless(
+            $hasActiveAssignment,
+            403,
+            'You are not authorized to check this vehicle'
+        );
+    } elseif ($user->role === 'customer') {
+        $hasShipment = $vehicle->shipments()
+            ->where('customer_id', $user->id)
+            ->exists();
+
+        abort_unless(
+            $hasShipment,
+            403,
+            'You are not authorized to check this vehicle'
+        );
+    } else {
+        abort(403);
+    }
+
+    if (! $vehicle->last_location) {
             return response()->json(['message' => 'This vehicle has no known location yet'], 422);
         }
 

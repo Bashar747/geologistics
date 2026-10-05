@@ -35,6 +35,7 @@ new class extends Component
     public function getShipmentsProperty()
     {
         return Shipment::query()
+            ->visibleTo(auth()->user())
             ->with([
                 'customer:id,name,phone',
                 'vehicle:id,plate_number,model,type',
@@ -62,6 +63,8 @@ new class extends Component
     public function deleteShipment(int $shipmentId): void
     {
         $shipment = Shipment::findOrFail($shipmentId);
+
+        $this->authorize('delete', $shipment);
 
         if ($shipment->status !== 'pending') {
             session()->flash(
@@ -100,18 +103,22 @@ new class extends Component
             </p>
         </div>
 
-        <a
-            href="/shipments/create"
-            wire:navigate
-            class="inline-flex items-center justify-center gap-2
-                   rounded-xl bg-blue-600 px-5 py-3
-                   text-sm font-semibold text-white
-                   transition hover:bg-blue-700"
-        >
-            <span class="text-lg leading-none">+</span>
+       @if (in_array(auth()->user()->role, ['admin', 'dispatcher', 'customer'], true))
 
-            Create Shipment
-        </a>
+    <a
+        href="/shipments/create"
+        wire:navigate
+        class="inline-flex items-center justify-center gap-2
+               rounded-xl bg-blue-600 px-5 py-3
+               text-sm font-semibold text-white
+               transition hover:bg-blue-700"
+    >
+        <span class="text-lg leading-none">+</span>
+
+        Create Shipment
+    </a>
+
+@endif
 
     </div>
 
