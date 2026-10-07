@@ -6,6 +6,7 @@ use App\Models\Vehicle;
 use App\Services\AuditLogger;
 use Livewire\Component;
 use App\Services\DispatchService;
+use App\Services\RoutingService;
 use App\Models\ShipmentProof;
 use Livewire\WithFileUploads;
 
@@ -15,6 +16,7 @@ new class extends Component
      use WithFileUploads;
 
     public Shipment $shipment;
+   
 
     public string $selected_vehicle_id = '';
     public ?array $suggested_vehicle = null;
@@ -40,21 +42,22 @@ public string $delivery_longitude = '';
    public $photo = null;
 
 
-    public function mount(Shipment $shipment): void
-    {
-        $this->authorize('view', $shipment);
+ public function mount(Shipment $shipment): void
+{
+    $this->authorize('view', $shipment);
 
-       $this->shipment = $shipment->load([
-    'customer:id,name,phone,email',
-    'vehicle.currentAssignment.driver:id,name,phone',
-    'items',
-    'statusHistory.changedBy',
-    'payment',
-    'rating',
-    'proof',
-]);
-        $this->selected_vehicle_id = (string) ($shipment->vehicle_id ?? '');
-    }
+    $this->shipment = $shipment->load([
+        'customer:id,name,phone,email',
+        'vehicle.currentAssignment.driver:id,name,phone',
+        'items',
+        'statusHistory.changedBy',
+        'payment',
+        'rating',
+        'proof',
+    ]);
+
+    $this->selected_vehicle_id = (string) ($shipment->vehicle_id ?? '');
+}
 
     public function submitRating(): void
     {
@@ -900,23 +903,59 @@ public string $delivery_longitude = '';
             <div wire:ignore id="shipment-map" class="h-[420px] w-full"></div>
 
         </div>
+@php
+    $routeToPickup = null;
+    $routeToDropoff = null;
 
+    $routingService = app(\App\Services\RoutingService::class);
+
+    if (
+        $this->currentVehicleLatitude !== null &&
+        $this->currentVehicleLongitude !== null &&
+        $shipment?->pickup_location
+    ) {
+        $route = $routingService->route(
+            (float) $this->currentVehicleLatitude,
+            (float) $this->currentVehicleLongitude,
+            (float) $shipment->pickup_location->getLatitude(),
+            (float) $shipment->pickup_location->getLongitude(),
+        );
+
+        $routeToPickup = $route['paths'][0]['points']['coordinates'] ?? null;
+    }
+
+    if ($shipment?->pickup_location && $shipment?->dropoff_location) {
+        $route = $routingService->route(
+            (float) $shipment->pickup_location->getLatitude(),
+            (float) $shipment->pickup_location->getLongitude(),
+            (float) $shipment->dropoff_location->getLatitude(),
+            (float) $shipment->dropoff_location->getLongitude(),
+        );
+
+        $routeToDropoff = $route['paths'][0]['points']['coordinates'] ?? null;
+    }
+@endphp
         @script
         <script>
-            const shipmentMapData = {
-                vehicle: {
-                    lat: @json($this->currentVehicleLatitude),
-                    lng: @json($this->currentVehicleLongitude)
-                },
-                pickup: {
-                    lat: @json($shipment?->pickup_location?->getLatitude()),
-                    lng: @json($shipment?->pickup_location?->getLongitude())
-                },
-                dropoff: {
-                    lat: @json($shipment?->dropoff_location?->getLatitude()),
-                    lng: @json($shipment?->dropoff_location?->getLongitude())
-                }
-            };
+          const shipmentMapData = {
+    vehicle: {
+        lat: @json($this->currentVehicleLatitude),
+        lng: @json($this->currentVehicleLongitude)
+    },
+    pickup: {
+        lat: @json($shipment?->pickup_location?->getLatitude()),
+        lng: @json($shipment?->pickup_location?->getLongitude())
+    },
+   dropoff: {
+    lat: @json($shipment?->dropoff_location?->getLatitude()),
+    lng: @json($shipment?->dropoff_location?->getLongitude())
+},
+routeToPickup: @js($routeToPickup),
+routeToDropoff: @js($routeToDropoff),
+    
+};
+
+
 
             function initializeShipmentMap() {
                 const mapElement = document.getElementById('shipment-map');
@@ -1004,7 +1043,46 @@ public string $delivery_longitude = '';
                         }
                     ).addTo(map);
                 }
+               let routeToPickupLine = null;
+let routeToDropoffLine = null;
 
+// Vehicle → Pickup
+if (
+    Array.isArray(shipmentMapData.routeToPickup) &&
+    shipmentMapData.routeToPickup.length > 1
+) {
+    const routeToPickupCoordinates =
+        shipmentMapData.routeToPickup.map(
+            ([lng, lat]) => [lat, lng]
+        );
+
+    routeToPickupLine = L.polyline(
+        routeToPickupCoordinates,
+        {
+            weight: 5,
+            opacity: 0.8,
+        }
+    ).addTo(map);
+}
+
+// Pickup → Dropoff
+if (
+    Array.isArray(shipmentMapData.routeToDropoff) &&
+    shipmentMapData.routeToDropoff.length > 1
+) {
+    const routeToDropoffCoordinates =
+        shipmentMapData.routeToDropoff.map(
+            ([lng, lat]) => [lat, lng]
+        );
+
+    routeToDropoffLine = L.polyline(
+        routeToDropoffCoordinates,
+        {
+            weight: 5,
+            opacity: 0.8,
+        }
+    ).addTo(map);
+}
                 const bounds = [vehiclePosition];
 
                 if (pickupMarker) {
@@ -2093,6 +2171,7 @@ public string $delivery_longitude = '';
     </div>
 
 </div>
+
 @script
 <script>
     const canvas = document.getElementById('signature-pad');

@@ -37,83 +37,83 @@
 
                 <nav class="px-4 space-y-2">
 
-                    <a
-                        href="/dashboard"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Dashboard
-                    </a>
+                  <a
+    href="/dashboard"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('dashboard') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Dashboard
+</a>
 
                     <a
-                        href="/shipments"
-                        wire:navigate
-                        class="block px-4 py-2 rounded hover:bg-gray-800"
-                    >
-                        Shipments
-                    </a>
+    href="/shipments"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('shipments*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Shipments
+</a>
 
                     @if (in_array(auth()->user()->role, ['admin', 'dispatcher']))
-                        <a
-                            href="/drivers"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Drivers
-                        </a>
+                       <a
+    href="/drivers"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('drivers*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Drivers
+</a>
 
-                        <a
-                            href="/vehicles"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Vehicles
-                        </a>
+                       <a
+    href="/vehicles"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('vehicles*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Vehicles
+</a>
                     @endif
 
                     @if (in_array(auth()->user()->role, ['admin', 'dispatcher', 'driver']))
-                        <a
-                            href="/tracking"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Tracking
-                        </a>
+                       <a
+    href="/tracking"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('tracking*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Tracking
+</a>
                     @endif
 
                     @if (in_array(auth()->user()->role, ['admin', 'dispatcher', 'customer']))
-                        <a
-                            href="/payments"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Payments
-                        </a>
+                       <a
+    href="/payments"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('payments*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Payments
+</a>
                     @endif
 
                     @if (in_array(auth()->user()->role, ['admin', 'dispatcher']))
-                        <a
-                            href="/users"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Users
-                        </a>
+                       <a
+    href="/users"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('users*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Users
+</a>
 
-                        <a
-                            href="/geofences"
-                            wire:navigate
-                            class="block px-4 py-2 rounded hover:bg-gray-800"
-                        >
-                            Geofences
-                        </a>
+                       <a
+    href="/geofences"
+    wire:navigate
+    class="block px-4 py-2 rounded {{ request()->is('geofences*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
+>
+    Geofences
+</a>
                     @endif
 
                    <a
     href="/notifications"
     wire:navigate
     id="notifications-link"
-    class="flex items-center justify-between px-4 py-2 rounded hover:bg-gray-800"
+   class="flex items-center justify-between px-4 py-2 rounded {{ request()->is('notifications*') ? 'bg-gray-800 font-semibold' : '' }} hover:bg-gray-800"
 >
     <span class="flex items-center gap-2">
         <span>🔔</span>

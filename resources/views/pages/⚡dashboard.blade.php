@@ -128,10 +128,10 @@ new class extends Component
 
 
         {{-- Shipment Overview --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
 
             {{-- Total --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
                 <p class="text-sm font-medium text-slate-500">
                     Total Shipments
                 </p>
@@ -143,7 +143,7 @@ new class extends Component
 
 
             {{-- Active --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
                 <p class="text-sm font-medium text-slate-500">
                     Active Shipments
                 </p>
@@ -159,7 +159,7 @@ new class extends Component
 
 
             {{-- Pending --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
                 <p class="text-sm font-medium text-slate-500">
                     Pending
                 </p>
@@ -171,7 +171,7 @@ new class extends Component
 
 
             {{-- Delivered --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
                 <p class="text-sm font-medium text-slate-500">
                     Delivered
                 </p>
@@ -380,7 +380,7 @@ new class extends Component
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             {{-- Assigned Vehicle --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center gap-3 mb-5">
 
@@ -474,7 +474,7 @@ new class extends Component
 
 
             {{-- Active Shipment --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+           <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center gap-3 mb-5">
 
@@ -722,21 +722,20 @@ new class extends Component
 
         {{-- Header --}}
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">
-                Dashboard
-            </h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+        Dashboard
+    </h1>
 
-            <p class="mt-1 text-sm text-slate-500">
-                A quick overview of your logistics operations.
-            </p>
-        </div>
+    <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+        A quick overview of your logistics operations.
+    </p>
+</div>
 
 
         {{-- KPI Cards --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {{-- Total Shipments --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center justify-between">
 
@@ -782,7 +781,7 @@ new class extends Component
 
 
             {{-- Active Shipments --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center justify-between">
 
@@ -832,7 +831,7 @@ new class extends Component
 
 
             {{-- Available Drivers --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center justify-between">
 
@@ -882,7 +881,7 @@ new class extends Component
 
 
             {{-- Available Vehicles --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
                 <div class="flex items-center justify-between">
 
@@ -941,7 +940,7 @@ new class extends Component
 
             <div class="px-6 py-5 border-b border-slate-200">
 
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                     <div>
                         <h2 class="text-lg font-semibold text-slate-900">
@@ -970,12 +969,12 @@ new class extends Component
             </div>
 
 
-            <div
-                wire:ignore
-                id="admin-fleet-map"
-                class="w-full h-[520px]"
-                style="height: 520px; min-height: 520px;"
-            ></div>
+          <div
+    wire:ignore
+    id="admin-fleet-map"
+    class="w-full h-[400px] md:h-[520px]"
+    style="height: 400px; min-height: 400px;"
+></div>
 
         </div>
 
@@ -985,7 +984,7 @@ new class extends Component
 
             <div class="px-6 py-5 border-b border-slate-200">
 
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                     <div>
                         <h2 class="text-lg font-semibold text-slate-900">

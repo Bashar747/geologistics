@@ -34,5 +34,8 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'graphhopper' => [
+    'api_key' => env('GRAPHHOPPER_API_KEY'),
+],
 
 ];
