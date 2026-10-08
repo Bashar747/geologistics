@@ -14,7 +14,7 @@ use App\Http\Resources\UserResource;
 
 class DriverController extends Controller
 {
-    // عرض كل السواق (أدمن/موزّع فقط) مع مركبتهم الحالية إذا وجدت
+   
   public function index()
 {
     $drivers = User::where('role', 'driver')
@@ -26,7 +26,7 @@ class DriverController extends Controller
     return UserResource::collection($drivers);
 }
 
-    // عرض سائق واحد بالتفصيل
+ 
    public function show(Request $request, User $driver)
 {
     if ($driver->role !== 'driver') {

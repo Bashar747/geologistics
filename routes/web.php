@@ -18,6 +18,9 @@ Route::livewire('/track/{trackingNumber}', 'pages::tracking.⚡show')
 Route::livewire('/tracking', 'pages::tracking.⚡index')
     ->name('tracking.index');
 
+    Route::livewire('/docs', 'pages::docs.⚡index')
+    ->name('docs');
+
 Route::middleware('auth')->group(function () {
     Route::livewire('/dashboard', 'pages::dashboard');
     Route::post('/logout', function () {
